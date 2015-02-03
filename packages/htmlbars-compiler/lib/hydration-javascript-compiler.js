@@ -30,15 +30,27 @@ prototype.compile = function(opcodes, options) {
 
   processOpcodes(this, opcodes);
 
-  var i, l;
+  var i, l, morphs;
+
+  var indent = this.indent + '  ';
+
   if (this.morphs.length) {
-    var morphs = "";
-    for (i = 0, l = this.morphs.length; i < l; ++i) {
-      var morph = this.morphs[i];
-      morphs += this.indent+'  var '+morph[0]+' = '+morph[1]+';\n';
-    }
-    this.source.unshift(morphs);
+    morphs =
+      indent+'var morphs = env.morphs;\n' +
+      indent+'if (!morphs) {\n' +
+      indent+'  morphs = new Array(' + this.morphs.length + ');\n';
+
+      for (i = 0, l = this.morphs.length; i < l; ++i) {
+        var morph = this.morphs[i];
+        morphs += indent+'  morphs['+i+'] = '+morph+';\n';
+      }
+
+      morphs += indent+'}\n';
+  } else {
+    morphs = indent+'var morphs;\n';
   }
+
+  this.source.unshift(morphs);
 
   if (this.fragmentProcessing.length) {
     var processing = "";
@@ -130,7 +142,7 @@ prototype.printSetHook = function(name, index) {
 prototype.printBlockHook = function(morphNum, templateId, inverseId) {
   this.printHook('block', [
     'env',
-    'morph' + morphNum,
+    'morphs[' + morphNum + ']',
     'context',
     this.stack.pop(), // path
     this.stack.pop(), // params
@@ -143,7 +155,7 @@ prototype.printBlockHook = function(morphNum, templateId, inverseId) {
 prototype.printInlineHook = function(morphNum) {
   this.printHook('inline', [
     'env',
-    'morph' + morphNum,
+    'morphs[' + morphNum + ']',
     'context',
     this.stack.pop(), // path
     this.stack.pop(), // params
@@ -154,7 +166,7 @@ prototype.printInlineHook = function(morphNum) {
 prototype.printContentHook = function(morphNum) {
   this.printHook('content', [
     'env',
-    'morph' + morphNum,
+    'morphs[' + morphNum + ']',
     'context',
     this.stack.pop() // path
   ]);
@@ -163,7 +175,7 @@ prototype.printContentHook = function(morphNum) {
 prototype.printComponentHook = function(morphNum, templateId) {
   this.printHook('component', [
     'env',
-    'morph' + morphNum,
+    'morphs[' + morphNum + ']',
     'context',
     this.stack.pop(), // path
     this.stack.pop(), // attrs
@@ -174,7 +186,7 @@ prototype.printComponentHook = function(morphNum, templateId) {
 prototype.printAttributeHook = function(attrMorphNum, elementNum) {
   this.printHook('attribute', [
     'env',
-    'attrMorph' + attrMorphNum,
+    'morphs[' + attrMorphNum + ']',
     'element' + elementNum,
     this.stack.pop(), // name
     this.stack.pop() // value
@@ -202,13 +214,13 @@ prototype.createMorph = function(morphNum, parentPath, startIndex, endIndex, esc
     ","+(endIndex === null ? "-1" : endIndex)+
     (isRoot ? ",contextualElement)" : ")");
 
-  this.morphs.push(['morph' + morphNum, morph]);
+  this.morphs[morphNum] = morph;
 };
 
 prototype.createAttrMorph = function(attrMorphNum, elementNum, name, escaped, namespace) {
   var morphMethod = escaped ? 'createAttrMorph' : 'createUnsafeAttrMorph';
   var morph = "dom."+morphMethod+"(element"+elementNum+", '"+name+(namespace ? "', '"+namespace : '')+"')";
-  this.morphs.push(['attrMorph' + attrMorphNum, morph]);
+  this.morphs[attrMorphNum] = morph;
 };
 
 prototype.repairClonedNode = function(blankChildTextNodes, isElementChecked) {
